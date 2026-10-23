@@ -1,8 +1,9 @@
 """Налаштування лаунчера. Єдине, що ТРЕБА змінити, - CLIENT_ID."""
 import os
 
-APP_NAME = "MyCraft Launcher"
-LAUNCHER_VERSION = "2.0"
+APP_NAME = "NovaCraft Launcher"
+APP_SHORT = "NOVACRAFT"
+LAUNCHER_VERSION = "3.0"
 
 # Репозиторій GitHub, з релізів якого лаунчер бере оновлення.
 GITHUB_REPO = "VL333333/MyCraftLauncher"

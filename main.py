@@ -1,6 +1,7 @@
-"""MyCraft Launcher 2.0 — CustomTkinter UI, профілі, RAM і менеджер модів."""
+"""Лаунчер Minecraft — CustomTkinter UI, профілі, RAM і менеджер модів."""
 import os
 import queue
+import sys
 import threading
 import traceback
 from pathlib import Path
@@ -15,14 +16,28 @@ import storage
 import updater
 from errors import friendly_error
 
-BG = "#101510"
-PANEL = "#19231c"
-PANEL_ALT = "#202d23"
-FG = "#f0f5f0"
-MUTED = "#9aa99c"
-GREEN = "#55d66b"
-GREEN_HOVER = "#39b950"
+BG = "#0a0e13"
+SIDEBAR = "#0e131a"
+PANEL = "#131a23"
+PANEL_ALT = "#1a2330"
+BORDER = "#222d3b"
+FG = "#eaf0f6"
+MUTED = "#8696a8"
+ACCENT = "#34d399"
+ACCENT_HOVER = "#22b784"
+ACCENT_SOFT = "#10302a"
+GREEN = ACCENT
+GREEN_HOVER = ACCENT_HOVER
 RED = "#ef6461"
+
+
+def resource_path(rel):
+    base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base, rel)
+
+
+def F(size=13, weight="normal"):
+    return ctk.CTkFont(family="Segoe UI", size=size, weight=weight)
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("green")
@@ -47,6 +62,7 @@ class App:
         self.name_var = ctk.StringVar(value=self.settings.get("offline_name", "Player"))
 
         root.title(config.APP_NAME)
+        root.after(250, self._set_icon)
         root.geometry("1000x700")
         root.minsize(900, 640)
         root.configure(fg_color=BG)
@@ -58,125 +74,182 @@ class App:
         self._load_versions()
         threading.Thread(target=self._check_update_worker, daemon=True).start()
 
+    def _set_icon(self):
+        try: self.root.iconbitmap(resource_path("assets/icon.ico"))
+        except Exception: pass
+
     def _build_ui(self):
         self.root.grid_columnconfigure(1, weight=1)
         self.root.grid_rowconfigure(0, weight=1)
-        self.sidebar = ctk.CTkFrame(self.root, width=205, corner_radius=0, fg_color="#141d16")
+        self.sidebar = ctk.CTkFrame(self.root, width=230, corner_radius=0, fg_color=SIDEBAR)
         self.sidebar.grid(row=0, column=0, sticky="nsew")
         self.sidebar.grid_propagate(False)
-        ctk.CTkLabel(self.sidebar, text="⛏ MYCRAFT", font=ctk.CTkFont(size=24, weight="bold"), text_color=GREEN).pack(padx=20, pady=(28, 4), anchor="w")
-        ctk.CTkLabel(self.sidebar, text="MINECRAFT JAVA LAUNCHER", font=ctk.CTkFont(size=10), text_color=MUTED).pack(padx=22, pady=(0, 28), anchor="w")
-        for text, page in [("⌂   Головна", "home"), ("▤   Профілі", "profiles"), ("◇   Моди", "mods"), ("⚙   Налаштування", "settings")]:
-            ctk.CTkButton(self.sidebar, text=text, anchor="w", height=42, corner_radius=10,
-                          fg_color="transparent", hover_color=PANEL_ALT,
-                          command=lambda p=page: self._show_page(p)).pack(fill="x", padx=12, pady=3)
+
+        brand = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        brand.pack(fill="x", padx=20, pady=(26, 28))
+        self._logo_img = None
+        try:
+            from PIL import Image
+            self._logo_img = ctk.CTkImage(Image.open(resource_path("assets/icon.png")), size=(40, 40))
+        except Exception: pass
+        if self._logo_img: ctk.CTkLabel(brand, text="", image=self._logo_img).pack(side="left")
+        names = ctk.CTkFrame(brand, fg_color="transparent"); names.pack(side="left", padx=(12, 0))
+        ctk.CTkLabel(names, text=config.APP_SHORT, font=F(20, "bold"), text_color=FG).pack(anchor="w")
+        ctk.CTkLabel(names, text="Minecraft Java Launcher", font=F(10), text_color=MUTED).pack(anchor="w")
+
+        self.nav = {}
+        for text, page in [("⌂", "home"), ("▤", "profiles"), ("◇", "mods"), ("⚙", "settings")]:
+            label = {"home": "Головна", "profiles": "Профілі", "mods": "Моди", "settings": "Налаштування"}[page]
+            btn = ctk.CTkButton(self.sidebar, text=f"  {text}    {label}", anchor="w", height=44, corner_radius=12,
+                                font=F(14, "bold"), fg_color="transparent", hover_color=PANEL_ALT, text_color=MUTED,
+                                command=lambda p=page: self._show_page(p))
+            btn.pack(fill="x", padx=14, pady=3)
+            self.nav[page] = btn
+
         ctk.CTkFrame(self.sidebar, fg_color="transparent").pack(expand=True, fill="both")
-        self.side_account = ctk.CTkLabel(self.sidebar, text="Офлайн", text_color=MUTED, wraplength=165)
-        self.side_account.pack(padx=15, pady=(0, 8), anchor="w")
-        ctk.CTkLabel(self.sidebar, text=f"MyCraft {config.LAUNCHER_VERSION}", text_color="#637266", font=ctk.CTkFont(size=11)).pack(padx=20, pady=(0, 18), anchor="w")
+        chip = ctk.CTkFrame(self.sidebar, fg_color=PANEL, corner_radius=14, border_width=1, border_color=BORDER)
+        chip.pack(fill="x", padx=14, pady=(0, 10))
+        dot = ctk.CTkFrame(chip, width=10, height=10, corner_radius=5, fg_color=ACCENT); dot.pack(side="left", padx=(14, 8), pady=16)
+        self.side_account = ctk.CTkLabel(chip, text="Офлайн", text_color=FG, font=F(12), wraplength=150, justify="left", anchor="w")
+        self.side_account.pack(side="left", fill="x", expand=True, pady=10, padx=(0, 10))
+        ctk.CTkLabel(self.sidebar, text=f"{config.APP_NAME}  ·  v{config.LAUNCHER_VERSION}", text_color="#4d5b6b", font=F(10)).pack(padx=20, pady=(0, 18), anchor="w")
 
         self.content = ctk.CTkFrame(self.root, fg_color=BG, corner_radius=0)
-        self.content.grid(row=0, column=1, sticky="nsew", padx=26, pady=24)
+        self.content.grid(row=0, column=1, sticky="nsew", padx=32, pady=28)
         self.content.grid_columnconfigure(0, weight=1)
         self._show_page("home")
 
     def _clear_content(self):
         for child in self.content.winfo_children():
             child.destroy()
+        self.content.grid_rowconfigure(3, weight=0)
 
     def _show_page(self, page):
         self.page = page
         self._clear_content()
+        for key, btn in getattr(self, "nav", {}).items():
+            on = key == page
+            btn.configure(fg_color=ACCENT_SOFT if on else "transparent", text_color=ACCENT if on else MUTED)
         if page == "home": self._home_page()
         elif page == "profiles": self._profiles_page()
         elif page == "mods": self._mods_page()
         else: self._settings_page()
 
     def _header(self, title, subtitle):
-        ctk.CTkLabel(self.content, text=title, font=ctk.CTkFont(size=30, weight="bold"), text_color=FG).grid(row=0, column=0, sticky="w")
-        ctk.CTkLabel(self.content, text=subtitle, font=ctk.CTkFont(size=13), text_color=MUTED).grid(row=1, column=0, sticky="w", pady=(2, 20))
+        ctk.CTkLabel(self.content, text=title, font=F(30, "bold"), text_color=FG).grid(row=0, column=0, sticky="w")
+        ctk.CTkLabel(self.content, text=subtitle, font=F(13), text_color=MUTED).grid(row=1, column=0, sticky="w", pady=(2, 20))
+
+    def _card(self, parent=None, **kw):
+        return ctk.CTkFrame(parent or self.content, fg_color=PANEL, corner_radius=18, border_width=1, border_color=BORDER, **kw)
+
+    def _caption(self, parent, text):
+        return ctk.CTkLabel(parent, text=text.upper(), text_color=MUTED, font=F(10, "bold"))
+
+    def _btn(self, parent, text, command, secondary=True, **kw):
+        base = dict(height=38, corner_radius=10, font=F(13, "bold"), command=command)
+        if secondary: base.update(fg_color=PANEL_ALT, hover_color=BORDER, text_color=FG)
+        else: base.update(fg_color=ACCENT, hover_color=ACCENT_HOVER, text_color="#04140d")
+        base.update(kw)
+        return ctk.CTkButton(parent, text=text, **base)
+
+    def _combo(self, parent, **kw):
+        return ctk.CTkComboBox(parent, height=38, corner_radius=10, fg_color=PANEL_ALT, border_color=BORDER, border_width=1,
+                               button_color=ACCENT, button_hover_color=ACCENT_HOVER, dropdown_fg_color=PANEL_ALT,
+                               dropdown_hover_color=BORDER, text_color=FG, font=F(13), dropdown_font=F(13), **kw)
+
+    def _entry(self, parent, **kw):
+        return ctk.CTkEntry(parent, height=38, corner_radius=10, fg_color=PANEL_ALT, border_color=BORDER, border_width=1,
+                            text_color=FG, font=F(13), **kw)
 
     def _home_page(self):
-        self._header("Час грати.", "Твій Minecraft — твої правила.")
-        hero = ctk.CTkFrame(self.content, fg_color=PANEL, corner_radius=18)
+        who = self.name_var.get().strip() or "гравцю"
+        self._header(f"Привіт, {who}!" if self.mode_var.get() == "offline" else "Радий тебе бачити!", "Обери версію та вирушай у світ.")
+        hero = ctk.CTkFrame(self.content, fg_color=ACCENT_SOFT, corner_radius=22, border_width=1, border_color="#1d5a48")
         hero.grid(row=2, column=0, sticky="ew", pady=(0, 16))
         hero.grid_columnconfigure(0, weight=1)
-        ctk.CTkLabel(hero, text="MYCRAFT SURVIVAL", text_color=GREEN, font=ctk.CTkFont(size=12, weight="bold")).grid(row=0, column=0, sticky="w", padx=24, pady=(22, 4))
-        ctk.CTkLabel(hero, text="Готовий до пригод?", font=ctk.CTkFont(size=25, weight="bold")).grid(row=1, column=0, sticky="w", padx=24)
-        ctk.CTkLabel(hero, text="Обери версію, налаштуй профіль і вирушай у світ.", text_color=MUTED).grid(row=2, column=0, sticky="w", padx=24, pady=(4, 18))
-        self.play_btn = ctk.CTkButton(hero, text="▶   ГРАТИ", height=52, width=220, corner_radius=12,
-                                      font=ctk.CTkFont(size=19, weight="bold"), fg_color=GREEN,
-                                      hover_color=GREEN_HOVER, text_color="#071109", command=self._on_play)
-        self.play_btn.grid(row=3, column=0, sticky="w", padx=24, pady=(0, 24))
+        ctk.CTkLabel(hero, text=f"●  {config.APP_SHORT} SURVIVAL", text_color=ACCENT, font=F(11, "bold")).grid(row=0, column=0, sticky="w", padx=28, pady=(26, 4))
+        ctk.CTkLabel(hero, text="Готовий до пригод?", font=F(28, "bold"), text_color=FG).grid(row=1, column=0, sticky="w", padx=28)
+        ctk.CTkLabel(hero, text="Один клік — і гра запущена. Все інше лаунчер зробить сам.", text_color="#9bc5b5", font=F(13)).grid(row=2, column=0, sticky="w", padx=28, pady=(4, 0))
+        self.play_btn = ctk.CTkButton(hero, text="▶   ГРАТИ", height=58, width=240, corner_radius=16,
+                                      font=F(20, "bold"), fg_color=ACCENT, hover_color=ACCENT_HOVER,
+                                      text_color="#04140d", command=self._on_play)
+        self.play_btn.grid(row=3, column=0, sticky="w", padx=28, pady=(20, 28))
+
         controls = ctk.CTkFrame(self.content, fg_color="transparent")
         controls.grid(row=3, column=0, sticky="ew")
-        controls.grid_columnconfigure((0, 1), weight=1)
-        version_card = ctk.CTkFrame(controls, fg_color=PANEL, corner_radius=14)
+        controls.grid_columnconfigure((0, 1), weight=1, uniform="c")
+        version_card = self._card(controls)
         version_card.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
-        ctk.CTkLabel(version_card, text="ВЕРСІЯ ГРИ", text_color=MUTED, font=ctk.CTkFont(size=11, weight="bold")).pack(anchor="w", padx=16, pady=(16, 5))
-        self.version_box = ctk.CTkComboBox(version_card, variable=self.version_var, values=[self.version_var.get()] if self.version_var.get() else [], state="readonly", width=250)
-        self.version_box.pack(anchor="w", padx=16, pady=(0, 16))
-        ram_card = ctk.CTkFrame(controls, fg_color=PANEL, corner_radius=14)
+        self._caption(version_card, "Версія гри").pack(anchor="w", padx=18, pady=(16, 6))
+        self.version_box = self._combo(version_card, variable=self.version_var, values=[self.version_var.get()] if self.version_var.get() else [], state="readonly")
+        self.version_box.pack(fill="x", padx=18, pady=(0, 18))
+        ram_card = self._card(controls)
         ram_card.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
-        ctk.CTkLabel(ram_card, text="ОПЕРАТИВНА ПАМ’ЯТЬ", text_color=MUTED, font=ctk.CTkFont(size=11, weight="bold")).pack(anchor="w", padx=16, pady=(16, 5))
-        ramrow = ctk.CTkFrame(ram_card, fg_color="transparent")
-        ramrow.pack(fill="x", padx=16, pady=(0, 14))
-        self.ram_slider = ctk.CTkSlider(ramrow, from_=1, to=16, number_of_steps=15, variable=self.ram_var, command=self._ram_changed)
-        self.ram_slider.pack(side="left", fill="x", expand=True, padx=(0, 12))
-        self.ram_label = ctk.CTkLabel(ramrow, text=f"{self.ram_var.get()} GB", width=55, font=ctk.CTkFont(weight="bold"))
+        self._caption(ram_card, "Оперативна пам’ять").pack(anchor="w", padx=18, pady=(16, 6))
+        ramrow = ctk.CTkFrame(ram_card, fg_color="transparent"); ramrow.pack(fill="x", padx=18, pady=(4, 20))
+        self.ram_slider = ctk.CTkSlider(ramrow, from_=1, to=16, number_of_steps=15, variable=self.ram_var, command=self._ram_changed,
+                                        progress_color=ACCENT, button_color=ACCENT, button_hover_color=ACCENT_HOVER, fg_color=PANEL_ALT)
+        self.ram_slider.pack(side="left", fill="x", expand=True, padx=(0, 14))
+        self.ram_label = ctk.CTkLabel(ramrow, text=f"{self.ram_var.get()} GB", width=58, font=F(15, "bold"), text_color=ACCENT)
         self.ram_label.pack(side="right")
-        status = ctk.CTkFrame(self.content, fg_color=PANEL, corner_radius=14)
+
+        status = self._card()
         status.grid(row=4, column=0, sticky="ew", pady=(16, 0))
-        self.status_label = ctk.CTkLabel(status, text="Готовий", font=ctk.CTkFont(size=14, weight="bold"))
-        self.status_label.pack(anchor="w", padx=16, pady=(12, 2))
-        self.detail_label = ctk.CTkLabel(status, text="", text_color=MUTED, wraplength=650, justify="left")
-        self.detail_label.pack(anchor="w", padx=16, pady=(0, 12))
-        self.progress = ctk.CTkProgressBar(self.content, progress_color=GREEN)
-        self.progress.grid(row=5, column=0, sticky="ew", pady=(12, 0)); self.progress.set(0)
+        self.status_label = ctk.CTkLabel(status, text="Готовий", font=F(14, "bold"), text_color=FG)
+        self.status_label.pack(anchor="w", padx=18, pady=(14, 2))
+        self.detail_label = ctk.CTkLabel(status, text="", text_color=MUTED, font=F(12), wraplength=650, justify="left")
+        self.detail_label.pack(anchor="w", padx=18, pady=(0, 8))
+        self.progress = ctk.CTkProgressBar(status, progress_color=ACCENT, fg_color=PANEL_ALT, height=8, corner_radius=4)
+        self.progress.pack(fill="x", padx=18, pady=(0, 16)); self.progress.set(0)
+
         account = ctk.CTkFrame(self.content, fg_color="transparent")
-        account.grid(row=6, column=0, sticky="ew", pady=(15, 0))
-        self.account_label = ctk.CTkLabel(account, text="", text_color=MUTED)
+        account.grid(row=6, column=0, sticky="ew", pady=(14, 0))
+        self.account_label = ctk.CTkLabel(account, text="", text_color=MUTED, font=F(12))
         self.account_label.pack(side="left")
-        self.logout_btn = ctk.CTkButton(account, text="Вийти", width=80, height=30, command=self._logout)
+        self.logout_btn = self._btn(account, "Вийти", self._logout, width=84, height=30)
         self.logout_btn.pack(side="right")
         self._refresh_account_label()
 
     def _profiles_page(self):
         self._header("Профілі", "Окремі налаштування для різних збірок Minecraft.")
-        card = ctk.CTkFrame(self.content, fg_color=PANEL, corner_radius=14)
-        card.grid(row=2, column=0, sticky="ew")
-        ctk.CTkLabel(card, text="Активний профіль", text_color=MUTED).pack(anchor="w", padx=18, pady=(16, 4))
+        card = self._card(); card.grid(row=2, column=0, sticky="ew")
+        self._caption(card, "Активний профіль").pack(anchor="w", padx=20, pady=(18, 6))
         self.profile_var = ctk.StringVar(value=self.active_profile)
-        self.profile_box = ctk.CTkComboBox(card, values=list(self.profiles), variable=self.profile_var, state="readonly", command=self._select_profile, width=300)
-        self.profile_box.pack(anchor="w", padx=18, pady=(0, 12))
-        row = ctk.CTkFrame(card, fg_color="transparent"); row.pack(fill="x", padx=18, pady=(0, 18))
-        ctk.CTkButton(row, text="＋ Створити профіль", command=self._create_profile).pack(side="left", padx=(0, 8))
-        ctk.CTkButton(row, text="Видалити профіль", fg_color="#8f3939", hover_color="#a84545", command=self._delete_profile).pack(side="left")
-        ctk.CTkLabel(self.content, text="Профіль зберігає версію, папку гри та виділену RAM. Для ізоляції модів задайте окрему папку гри.", text_color=MUTED, wraplength=680, justify="left").grid(row=3, column=0, sticky="w", pady=16)
+        self.profile_box = self._combo(card, values=list(self.profiles), variable=self.profile_var, state="readonly", command=self._select_profile, width=320)
+        self.profile_box.pack(anchor="w", padx=20, pady=(0, 14))
+        row = ctk.CTkFrame(card, fg_color="transparent"); row.pack(fill="x", padx=20, pady=(0, 20))
+        self._btn(row, "＋  Створити профіль", self._create_profile, secondary=False).pack(side="left", padx=(0, 8))
+        self._btn(row, "Видалити профіль", self._delete_profile, fg_color="#5a2a2f", hover_color="#7a3640").pack(side="left")
+        ctk.CTkLabel(self.content, text="Профіль зберігає версію, папку гри та виділену RAM. Для ізоляції модів задайте окрему папку гри.", text_color=MUTED, font=F(12), wraplength=680, justify="left").grid(row=3, column=0, sticky="w", pady=16)
 
     def _mods_page(self):
         self._header("Менеджер модів", "Переглядай, вмикай і вимикай .jar-моди в папці активного профілю.")
         bar = ctk.CTkFrame(self.content, fg_color="transparent"); bar.grid(row=2, column=0, sticky="ew", pady=(0, 12))
-        ctk.CTkButton(bar, text="Відкрити папку mods", command=self._open_mods_folder).pack(side="left")
-        ctk.CTkButton(bar, text="Оновити список", command=self._refresh_mods).pack(side="left", padx=8)
-        self.mods_list = ctk.CTkScrollableFrame(self.content, fg_color=PANEL, corner_radius=14, height=360)
+        self._btn(bar, "Відкрити папку mods", self._open_mods_folder, secondary=False).pack(side="left")
+        self._btn(bar, "Оновити список", self._refresh_mods).pack(side="left", padx=8)
+        self.mods_list = ctk.CTkScrollableFrame(self.content, fg_color=PANEL, corner_radius=18, border_width=1, border_color=BORDER, height=360)
         self.mods_list.grid(row=3, column=0, sticky="nsew")
         self.content.grid_rowconfigure(3, weight=1)
         self._refresh_mods()
 
     def _settings_page(self):
         self._header("Налаштування", "Параметри лаунчера та спосіб входу.")
-        card = ctk.CTkFrame(self.content, fg_color=PANEL, corner_radius=14); card.grid(row=2, column=0, sticky="ew")
-        ctk.CTkLabel(card, text="Папка гри", text_color=MUTED).pack(anchor="w", padx=18, pady=(16, 5))
-        row = ctk.CTkFrame(card, fg_color="transparent"); row.pack(fill="x", padx=18)
-        ctk.CTkEntry(row, textvariable=self.dir_var).pack(side="left", fill="x", expand=True, padx=(0, 8))
-        ctk.CTkButton(row, text="Обрати…", width=100, command=self._choose_dir).pack(side="right")
-        ctk.CTkLabel(card, text="Спосіб входу", text_color=MUTED).pack(anchor="w", padx=18, pady=(16, 5))
-        ctk.CTkSegmentedButton(card, values=["Microsoft", "Офлайн"], command=self._set_auth_mode).pack(anchor="w", padx=18)
-        ctk.CTkLabel(card, text="Нік для офлайн-режиму", text_color=MUTED).pack(anchor="w", padx=18, pady=(16, 5))
-        ctk.CTkEntry(card, textvariable=self.name_var, width=260).pack(anchor="w", padx=18)
-        ctk.CTkCheckBox(card, text="Показувати снапшоти", variable=self.snap_var, command=self._load_versions).pack(anchor="w", padx=18, pady=16)
-        ctk.CTkButton(card, text="Зберегти налаштування", command=self._save_settings).pack(anchor="w", padx=18, pady=(0, 18))
+        card = self._card(); card.grid(row=2, column=0, sticky="ew")
+        self._caption(card, "Папка гри").pack(anchor="w", padx=20, pady=(18, 6))
+        row = ctk.CTkFrame(card, fg_color="transparent"); row.pack(fill="x", padx=20)
+        self._entry(row, textvariable=self.dir_var).pack(side="left", fill="x", expand=True, padx=(0, 8))
+        self._btn(row, "Обрати…", self._choose_dir, width=100).pack(side="right")
+        self._caption(card, "Спосіб входу").pack(anchor="w", padx=20, pady=(18, 6))
+        seg = ctk.CTkSegmentedButton(card, values=["Microsoft", "Офлайн"], command=self._set_auth_mode, height=36,
+                                     selected_color="#1f9d72", selected_hover_color="#1a8962", unselected_color=PANEL_ALT,
+                                     unselected_hover_color=BORDER, text_color=FG, fg_color=PANEL_ALT, font=F(13, "bold"))
+        seg.pack(anchor="w", padx=20)
+        seg.set("Офлайн" if self.mode_var.get() == "offline" else "Microsoft")
+        self._caption(card, "Нік для офлайн-режиму").pack(anchor="w", padx=20, pady=(18, 6))
+        self._entry(card, textvariable=self.name_var, width=280).pack(anchor="w", padx=20)
+        ctk.CTkCheckBox(card, text="Показувати снапшоти", variable=self.snap_var, command=self._load_versions, font=F(13),
+                        fg_color=ACCENT, hover_color=ACCENT_HOVER, checkmark_color="#04140d", border_color=BORDER).pack(anchor="w", padx=20, pady=18)
+        self._btn(card, "Зберегти налаштування", self._save_settings, secondary=False).pack(anchor="w", padx=20, pady=(0, 20))
 
     def _ram_changed(self, value):
         if hasattr(self, "ram_label"): self.ram_label.configure(text=f"{int(float(value))} GB")

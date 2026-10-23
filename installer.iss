@@ -1,7 +1,7 @@
 ; Inno Setup — створює MyCraftLauncher_Setup.exe зі звичайним майстром встановлення
-#define MyAppName "MyCraft Launcher"
+#define MyAppName "NovaCraft Launcher"
 #ifndef MyAppVersion
-  #define MyAppVersion "2.0"
+  #define MyAppVersion "3.0"
 #endif
 #define MyAppExe "MyCraftLauncher.exe"
 
@@ -16,6 +16,7 @@ OutputBaseFilename=MyCraftLauncher_Setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile=assets\icon.ico
 PrivilegesRequired=lowest
 ArchitecturesInstallIn64BitMode=x64compatible
 UninstallDisplayIcon={app}\{#MyAppExe}
@@ -25,10 +26,14 @@ Name: "ukrainian"; MessagesFile: "compiler:Languages\Ukrainian.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "Створити ярлик на робочому столі"; Flags: unchecked
+Name: "desktopicon"; Description: "Створити ярлик на робочому столі"; Flags: checkedonce
 
 [Files]
 Source: "dist\MyCraftLauncher\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+[InstallDelete]
+Type: files; Name: "{autodesktop}\MyCraft Launcher.lnk"
+Type: filesandordirs; Name: "{autoprograms}\MyCraft Launcher"
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"

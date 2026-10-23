@@ -25,7 +25,7 @@ def is_newer(remote: str, local: str) -> bool:
     return a + (0,) * (n - len(a)) > b + (0,) * (n - len(b))
 
 
-def check_for_update() -> dict | None:
+def check_for_update(installed_version: str = "") -> dict | None:
     """Повертає {'version','url','sha256','notes'} або None, якщо оновлень немає / немає мережі."""
     try:
         r = requests.get(API_URL, timeout=8, headers={"Accept": "application/vnd.github+json"})
@@ -34,6 +34,9 @@ def check_for_update() -> dict | None:
         data = r.json()
         tag = data.get("tag_name", "")
         if not is_newer(tag, config.LAUNCHER_VERSION):
+            return None
+        # Захист від нескінченного циклу: якщо цю версію вже встановлювали - не пропонуємо знову.
+        if installed_version and not is_newer(tag, installed_version):
             return None
         for asset in data.get("assets", []):
             if asset.get("name") == ASSET_NAME:

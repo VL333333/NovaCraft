@@ -326,7 +326,7 @@ class App:
         if self.root.winfo_exists(): self.root.after(100, self._poll)
 
     def _check_update_worker(self):
-        info = updater.check_for_update()
+        info = updater.check_for_update(self.settings.get("update_installed", ""))
         if info: self.post("update", info)
 
     def _on_update(self, info):
@@ -345,11 +345,12 @@ class App:
     def _update_worker(self, info):
         try:
             path = updater.download_installer(info, lambda p: self.post("progress", p))
-            self.post("update_ready", path)
+            self.post("update_ready", path, info["version"])
         except Exception as e:
             self.post("error", f"Не вдалося оновитися: {e}"); self.post("idle")
 
-    def _on_update_ready(self, path):
+    def _on_update_ready(self, path, version):
+        self.settings["update_installed"] = version
         self._save_settings()
         updater.run_installer(path)
         os._exit(0)

@@ -1,0 +1,36 @@
+; Inno Setup — створює MyCraftLauncher_Setup.exe зі звичайним майстром встановлення
+#define MyAppName "MyCraft Launcher"
+#define MyAppVersion "2.0"
+#define MyAppExe "MyCraftLauncher.exe"
+
+[Setup]
+AppId={{B7C1D2A4-5E3F-4A86-9C1B-0A1B2C3D4E5F}
+AppName={#MyAppName}
+AppVersion={#MyAppVersion}
+DefaultDirName={autopf}\MyCraftLauncher
+DefaultGroupName={#MyAppName}
+OutputDir=installer_output
+OutputBaseFilename=MyCraftLauncher_Setup
+Compression=lzma2
+SolidCompression=yes
+WizardStyle=modern
+PrivilegesRequired=lowest
+ArchitecturesInstallIn64BitMode=x64compatible
+UninstallDisplayIcon={app}\{#MyAppExe}
+
+[Languages]
+Name: "ukrainian"; MessagesFile: "compiler:Languages\Ukrainian.isl"
+Name: "english"; MessagesFile: "compiler:Default.isl"
+
+[Tasks]
+Name: "desktopicon"; Description: "Створити ярлик на робочому столі"; Flags: unchecked
+
+[Files]
+Source: "dist\MyCraftLauncher\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+[Icons]
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"; Tasks: desktopicon
+
+[Run]
+Filename: "{app}\{#MyAppExe}"; Description: "Запустити {#MyAppName}"; Flags: nowait postinstall skipifsilent

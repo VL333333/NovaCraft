@@ -4,6 +4,9 @@ import os
 APP_NAME = "MyCraft Launcher"
 LAUNCHER_VERSION = "2.0"
 
+# Репозиторій GitHub, з релізів якого лаунчер бере оновлення.
+GITHUB_REPO = "VL333333/MyCraftLauncher"
+
 # Application (client) ID вашого застосунку в Azure (див. README, розділ 4).
 # Можна також задати через змінну середовища MYCRAFT_CLIENT_ID.
 CLIENT_ID = os.environ.get("MYCRAFT_CLIENT_ID", "PASTE-YOUR-AZURE-CLIENT-ID-HERE")

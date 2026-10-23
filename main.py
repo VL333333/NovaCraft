@@ -12,6 +12,7 @@ import auth
 import config
 import game
 import storage
+import updater
 from errors import friendly_error
 
 BG = "#101510"
@@ -55,6 +56,7 @@ class App:
         root.protocol("WM_DELETE_WINDOW", self._on_close)
         root.after(100, self._poll)
         self._load_versions()
+        threading.Thread(target=self._check_update_worker, daemon=True).start()
 
     def _build_ui(self):
         self.root.grid_columnconfigure(1, weight=1)
@@ -322,6 +324,35 @@ class App:
                 except Exception: traceback.print_exc()
         except queue.Empty: pass
         if self.root.winfo_exists(): self.root.after(100, self._poll)
+
+    def _check_update_worker(self):
+        info = updater.check_for_update()
+        if info: self.post("update", info)
+
+    def _on_update(self, info):
+        if self.busy: return
+        text = f"Доступна нова версія {info['version']} (у вас {config.LAUNCHER_VERSION})."
+        if info.get("notes"): text += f"\n\n{info['notes']}"
+        if not updater.can_self_update():
+            messagebox.showinfo("Оновлення", text + "\n\nЗавантажте її зі сторінки релізів GitHub.")
+            return
+        if not messagebox.askyesno("Оновлення", text + "\n\nОновити зараз? Лаунчер перезапуститься."): return
+        self.busy = True
+        self.play_btn.configure(state="disabled")
+        self.status_label.configure(text="Завантаження оновлення...", text_color=FG)
+        threading.Thread(target=self._update_worker, args=(info,), daemon=True).start()
+
+    def _update_worker(self, info):
+        try:
+            path = updater.download_installer(info, lambda p: self.post("progress", p))
+            self.post("update_ready", path)
+        except Exception as e:
+            self.post("error", f"Не вдалося оновитися: {e}"); self.post("idle")
+
+    def _on_update_ready(self, path):
+        self._save_settings()
+        updater.run_installer(path)
+        os._exit(0)
 
     def _on_status(self, text): self.status_label.configure(text=text, text_color=FG)
     def _on_detail(self, text):

@@ -1,6 +1,8 @@
 ; Inno Setup — створює MyCraftLauncher_Setup.exe зі звичайним майстром встановлення
 #define MyAppName "MyCraft Launcher"
-#define MyAppVersion "2.0"
+#ifndef MyAppVersion
+  #define MyAppVersion "2.0"
+#endif
 #define MyAppExe "MyCraftLauncher.exe"
 
 [Setup]
@@ -34,3 +36,4 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"; Tasks: deskto
 
 [Run]
 Filename: "{app}\{#MyAppExe}"; Description: "Запустити {#MyAppName}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExe}"; Flags: nowait; Check: WizardSilent

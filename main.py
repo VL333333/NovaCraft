@@ -73,7 +73,7 @@ class App:
         ctk.CTkFrame(self.sidebar, fg_color="transparent").pack(expand=True, fill="both")
         self.side_account = ctk.CTkLabel(self.sidebar, text="Офлайн", text_color=MUTED, wraplength=165)
         self.side_account.pack(padx=15, pady=(0, 8), anchor="w")
-ctk.CTkLabel(self.sidebar, text=f"MyCraft {config.LAUNCHER_VERSION}", text_color="#637266", font=ctk.CTkFont(size=11)).pack(padx=20, pady=(0, 18), anchor="w")
+        ctk.CTkLabel(self.sidebar, text=f"MyCraft {config.LAUNCHER_VERSION}", text_color="#637266", font=ctk.CTkFont(size=11)).pack(padx=20, pady=(0, 18), anchor="w")
 
         self.content = ctk.CTkFrame(self.root, fg_color=BG, corner_radius=0)
         self.content.grid(row=0, column=1, sticky="nsew", padx=26, pady=24)
